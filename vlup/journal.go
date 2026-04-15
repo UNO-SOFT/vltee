@@ -12,6 +12,38 @@ import (
 	"io"
 )
 
+func WriteJournalEntry(w io.Writer, priority int, message []byte, vars map[string]string) error {
+	fmt.Fprintf(w, "PRIORITY=%d\n", priority)
+	if err := appendVariable(w, "MESSAGE", message); err != nil {
+		return err
+	}
+	for k, v := range vars {
+		if err := appendVariable(w, k, []byte(v)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func appendVariable(w io.Writer, name string, value []byte) error {
+	// copied from https://github.com/coreos/go-systemd/blob/v22.7.0/journal/journal_unix.go#L188
+	if !bytes.ContainsRune(value, '\n') {
+		/* just write the variable and value all on one line */
+		_, err := fmt.Fprintf(w, "%s=%s\n", name, value)
+		return err
+	}
+	/* When the value contains a newline, we write:
+	 * - the variable name, followed by a newline
+	 * - the size (in 64bit little endian format)
+	 * - the data, followed by a newline
+	 */
+	fmt.Fprintln(w, name)
+	_ = binary.Write(w, binary.LittleEndian, uint64(len(value)))
+	_, err := w.Write(value)
+	w.Write([]byte{'\n'})
+	return err
+}
+
 func CopyJournalEntry(w io.Writer, br *bufio.Reader) (int64, error) {
 	var written int64
 	W := func(p []byte) error {
