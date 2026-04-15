@@ -1,3 +1,5 @@
+github.com/UNO-SOFT/vltail v0.0.0-20260415135956-5f3ad2876bb7 h1:AYjeWebd+lCD8HpUIkhODpiklDzemyG6CvANZPDhxwE=
+github.com/UNO-SOFT/vltail v0.0.0-20260415135956-5f3ad2876bb7/go.mod h1:AjrGN+ERNeDAZtpwehJaq3JIDhvW0MlhrDAWQ8aRcQQ=
 github.com/pelletier/go-toml/v2 v2.0.9 h1:uH2qQXheeefCCkuBBSLi7jCiSmj3VRh2+Goq2N7Xxu0=
 github.com/pelletier/go-toml/v2 v2.0.9/go.mod h1:tJU2Z3ZkXwnxa4DPO899bsyIoywizdUvyaeZurnPPDc=
 github.com/peterbourgon/ff/v4 v4.0.0-beta.1 h1:hV8qRu3V7YfiSMsBSfPfdcznAvPQd3jI5zDddSrDoUc=

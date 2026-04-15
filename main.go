@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/UNO-SOFT/vltail/vlup"
+	"github.com/UNO-SOFT/vltee/vlup"
 	"github.com/peterbourgon/ff/v4"
 	"github.com/peterbourgon/ff/v4/ffhelp"
 )
@@ -49,7 +49,7 @@ func Main() error {
 
 			var mu sync.Mutex
 			var buf bytes.Buffer
-			ctx, cancel := context.WithCancel(ctx)
+			done := make(chan struct{})
 			ticker := time.NewTicker(time.Second)
 			var wg sync.WaitGroup
 			wg.Go(func() {
@@ -57,6 +57,8 @@ func Main() error {
 					var exit bool
 					select {
 					case <-ticker.C:
+					case <-done:
+						exit = true
 					case <-ctx.Done():
 						exit = true
 					}
@@ -80,10 +82,10 @@ func Main() error {
 				mu.Unlock()
 				if err != nil {
 					slog.Error("WriteJournalEntry", "error", err)
-					continue
 				}
+				os.Stdout.Write(append(scanner.Bytes(), '\n'))
 			}
-			cancel()
+			close(done)
 			wg.Wait()
 			return nil
 		},
