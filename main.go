@@ -37,14 +37,14 @@ func main() {
 }
 
 func Main() error {
-	FS := ff.NewFlagSet("vltail")
+	FS := ff.NewFlagSet("vltee")
 	flagAccountID := FS.UintLong("account-id", uint(vlup.NewAccountID("")), "accountID")
 	flagProjectID := FS.UintLong("project-id", uint(vlup.NewProjectID("")), "projectID")
 	flagVLURL := FS.StringLong("vlurl", "", "VictoriaLogs url")
 	flagPriority := FS.IntLong("priority", 6, "priority")
 	flagKVs := FS.StringListLong("kvs", "key-value pairs separated by =")
-	appCmd := ff.Command{Name: "vltail", Flags: FS,
-		ShortHelp: "vltail [options] <vl-url>",
+	appCmd := ff.Command{Name: "vltee", Flags: FS,
+		ShortHelp: "vltee [options] <vl-url>",
 		Exec: func(ctx context.Context, args []string) error {
 			if len(args) < 1 {
 				if *flagVLURL == "" {
@@ -110,7 +110,7 @@ func Main() error {
 			if *flagGetenv != "" {
 				setup = *flagGetenv + "; "
 			}
-			syslogIdentifier := "vltail-" + name
+			syslogIdentifier := "vltee-" + name
 
 			prog = "systemd-run"
 			cmdArgs = append(cmdArgs,
