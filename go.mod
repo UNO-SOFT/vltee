@@ -7,4 +7,4 @@ require (
 	mvdan.cc/sh/v3 v3.13.1
 )
 
-require github.com/tgulacsi/go v0.29.3-0.20260603181949-ebb4352322d9 // indirect
+require github.com/tgulacsi/go v0.29.3 // indirect
