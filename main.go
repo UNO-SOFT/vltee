@@ -26,6 +26,7 @@ import (
 	"github.com/UNO-SOFT/vltee/vlup"
 	"github.com/peterbourgon/ff/v4"
 	"github.com/peterbourgon/ff/v4/ffhelp"
+	"github.com/tgulacsi/go/journal"
 	"mvdan.cc/sh/v3/syntax"
 )
 
@@ -245,7 +246,7 @@ func uploadLines(ctx context.Context, cl vlup.Client, w io.Writer, r io.Reader, 
 		line++
 		vars["LINE"] = strconv.FormatInt(line, 10)
 		mu.Lock()
-		err := vlup.WriteJournalEntry(&buf, priority, scanner.Bytes(), vars)
+		err := journal.WriteJournalEntry(&buf, priority, scanner.Bytes(), vars)
 		mu.Unlock()
 		if err != nil {
 			slog.Error("WriteJournalEntry", "error", err)
