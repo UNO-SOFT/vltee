@@ -11,6 +11,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"log/slog"
@@ -23,9 +24,9 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/UNO-SOFT/cli"
+	"github.com/UNO-SOFT/cli/flagtype"
 	"github.com/UNO-SOFT/vltee/vlup"
-	"github.com/peterbourgon/ff/v4"
-	"github.com/peterbourgon/ff/v4/ffhelp"
 	"github.com/tgulacsi/go/journal"
 	"mvdan.cc/sh/v3/syntax"
 )
@@ -38,15 +39,17 @@ func main() {
 }
 
 func Main() error {
-	FS := ff.NewFlagSet("vltee")
-	flagAccountID := FS.UintLong("account-id", uint(vlup.NewAccountID("")), "accountID")
-	flagProjectID := FS.UintLong("project-id", uint(vlup.NewProjectID("")), "projectID")
-	flagVLURL := FS.StringLong("vlurl", "", "VictoriaLogs url")
-	flagPriority := FS.IntLong("priority", 6, "priority")
-	flagKVs := FS.StringListLong("kvs", "key-value pairs separated by =")
-	appCmd := ff.Command{Name: "vltee", Flags: FS,
-		ShortHelp: "vltee [options] <vl-url>",
-		Exec: func(ctx context.Context, args []string) error {
+	FS := flag.NewFlagSet("vltee", flag.ContinueOnError)
+	flagAccountID := FS.Uint("account-id", uint(vlup.NewAccountID("")), "accountID")
+	flagProjectID := FS.Uint("project-id", uint(vlup.NewProjectID("")), "projectID")
+	flagVLURL := FS.String("vlurl", "", "VictoriaLogs url")
+	flagPriority := FS.Int("priority", 6, "priority")
+	flagKVs := flagtype.StringSlice()
+	FS.Var(flagKVs, "kvs", "key-value pairs separated by =")
+	appCmd := cli.Command{Name: "vltee", Flags: FS,
+		Summary: "vltee [options] <vl-url>",
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			if len(args) < 1 {
 				if *flagVLURL == "" {
 					return errors.New("destURL is required")
@@ -58,9 +61,10 @@ func Main() error {
 				return err
 			}
 			var vars map[string]string
-			if len(*flagKVs) != 0 {
-				vars = make(map[string]string, len(*flagKVs))
-				for _, kv := range *flagKVs {
+			kvs := state.GetFlag[[]string]("kvs")
+			if len(kvs) != 0 {
+				vars = make(map[string]string, len(kvs))
+				for _, kv := range kvs {
 					if k, v, ok := strings.Cut(kv, "="); ok {
 						vars[k] = v
 					}
@@ -70,16 +74,18 @@ func Main() error {
 		},
 	}
 
-	parent := FS
-	FS = ff.NewFlagSet("run")
-	FS.SetParent(parent)
-	flagEmails := FS.StringListLong("email", "email addresses")
-	flagGetenv := FS.StringLong("get-env", os.ExpandEnv(". ${BRUNO_HOME}/../.app_env"), "bash command to set up the environment")
-	flagUnitName := FS.StringLong("unit-name", "", "unit name")
-	runCmd := ff.Command{Name: "run", Flags: FS,
-		ShortHelp: "run program and tail output on web",
-		Usage:     "run [opts] <program> [program args]",
-		Exec: func(ctx context.Context, args []string) error {
+	// parent := FS
+	FS = flag.NewFlagSet("run", flag.ContinueOnError)
+	// FS.SetParent(parent)
+	flagEmails := flagtype.StringSlice()
+	FS.Var(flagEmails, "email", "email addresses")
+	flagGetenv := FS.String("get-env", os.ExpandEnv(". ${BRUNO_HOME}/../.app_env"), "bash command to set up the environment")
+	flagUnitName := FS.String("unit-name", "", "unit name")
+	runCmd := cli.Command{Name: "run", Flags: FS,
+		Summary: "run program and tail output on web",
+		Usage:   "run [opts] <program> [program args]",
+		Exec: func(ctx context.Context, state *cli.State) error {
+			args := state.Args
 			cl, err := vlup.NewClient(*flagVLURL, vlup.AccountID(*flagAccountID), vlup.ProjectID(*flagProjectID), nil)
 			if err != nil {
 				return err
@@ -144,9 +150,10 @@ func Main() error {
 			fmt.Printf("%s/select/vmui/?#/?SYSLOG_IDENTIFIER=%s&accountID=%d&projectID=%d&view=liveTailing\n", *flagVLURL, syslogIdentifier, *flagAccountID, *flagProjectID)
 
 			var vars map[string]string
-			if len(*flagKVs) != 0 {
-				vars = make(map[string]string, len(*flagKVs)+2)
-				for _, kv := range *flagKVs {
+			kvs := state.GetFlag[[]string]("kvs")
+			if len(kvs) != 0 {
+				vars = make(map[string]string, len(kvs)+2)
+				for _, kv := range kvs {
 					if k, v, ok := strings.Cut(kv, "="); ok {
 						vars[k] = v
 					}
@@ -165,7 +172,8 @@ func Main() error {
 
 			err = cmd.Wait()
 			slog.Warn("finished", "error", err)
-			if len(*flagEmails) == 0 {
+			emails := state.GetFlag[[]string]("email")
+			if len(emails) == 0 {
 				return err
 			}
 			var typ string
@@ -180,9 +188,9 @@ func Main() error {
 				}
 			}
 			mail := exec.CommandContext(ctx, "mail",
-				append(append(make([]string, 0, 2+len(*flagEmails)),
+				append(append(make([]string, 0, 2+len(emails)),
 					"-s", strings.Join(args, " ")+" "+typ+" lefutott"),
-					*flagEmails...)...)
+					emails...)...)
 			mail.Stdin = strings.NewReader(
 				strings.Join(cmd.Args, " ") + ": " + strconv.Itoa(rc))
 			mail.Stdout, mail.Stderr = os.Stdout, os.Stderr
@@ -193,18 +201,18 @@ func Main() error {
 			return mail.Wait()
 		},
 	}
-	appCmd.Subcommands = append(appCmd.Subcommands, &runCmd)
+	appCmd.SubCommands = append(appCmd.SubCommands, &runCmd)
 
-	if err := appCmd.Parse(os.Args[1:]); err != nil {
-		if errors.Is(err, ff.ErrHelp) {
-			ffhelp.Command(&appCmd).WriteTo(os.Stderr)
+	if err := cli.Parse(&appCmd, os.Args[1:]); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			cli.PrintHelp(os.Stderr, &appCmd)
 			return nil
 		}
 		return err
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
-	return appCmd.Run(ctx)
+	return cli.Run(ctx, &appCmd, nil)
 }
 
 func uploadLines(ctx context.Context, cl vlup.Client, w io.Writer, r io.Reader, priority int, vars map[string]string) error {
